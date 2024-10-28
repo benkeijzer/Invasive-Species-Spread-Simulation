@@ -1,0 +1,117 @@
+# Importing packages
+import numpy as np
+import simpy
+from numpy import random
+
+
+
+class Nature(object):
+    def __init__(self, env, p_spread):
+        self.env = env
+        self.p_spread = p_spread
+        self.resource = simpy.Resource(env, capacity = 1) 
+        
+    def spread(self, array):
+        p = self.p_spread/100
+            #Converting p_spread from percentage to probability value
+        
+        ones_indices = np.argwhere(array == 1)
+            #Recording all coordinates where the species is present
+
+        for coord in ones_indices:
+            x, y = coord 
+            
+            if x + 1 < array.shape[0] and array[x + 1, y] == 0:    
+                r = random.random()  
+                if r < p:
+                    array[x + 1, y] = 1
+                else:
+                    array[x + 1, y] = 0
+                        
+            if x - 1 >= 0 and array[x - 1, y] == 0:  
+                r = random.random()  
+                if r < p:
+                    array[x - 1, y] = 1
+                else:
+                    array[x - 1, y] = 0
+            
+            if y + 1 < array.shape[1] and array[x, y + 1] == 0:  
+                r = random.random()  
+                if r < p:
+                    array[x, y + 1] = 1
+                else:
+                    array[x, y + 1] = 0
+                    
+            if y - 1 >= 0 and array[x, y - 1] == 0:  
+                
+                r = random.random()  
+                if r < p:
+                    array[x, y - 1] = 1
+                else:
+                    array[x, y - 1] = 0
+                    
+        return array
+
+
+
+def run_spread(env, array, nature):
+    while True:
+        with nature.resource.request() as request:
+            yield request
+            
+            array = nature.spread(array)
+            
+            print(f"\nTime {env.now}:")
+            print(array)
+                #Printing the time value and array at that time
+            
+            if np.all(array == 1):
+                print(f"\nArray completely filled at time {env.now}")
+                return
+                    #Checking if the invasive species has completely taken over the environment (array)
+            
+        yield env.timeout(1)
+            
+        
+
+
+def simulate_spread(env, p_spread):
+    nature = Nature(env, p_spread)
+    
+    array = random.randint(1, size = (10,10))
+    array[4, 6] = 1
+    array[8, 3] = 1
+        #Setting coords for the species start location
+    
+    return run_spread(env, array, nature)
+
+
+
+
+
+def get_user_input():
+    try:
+        p_spread = int(input("As a percentage, what is the probability that the invasive species spreads to a neighbouring location? "))
+        return p_spread
+    except ValueError:
+        print("Could not parse input. Using default value (50).")
+        return 50
+            #Was made using claude ai
+
+
+
+def main():
+    random.seed(13)
+    
+    p_spread = get_user_input()
+    
+    env = simpy.Environment()
+    
+    env.process(simulate_spread(env, p_spread))
+    
+    env.run(until = 15)
+    
+
+if __name__ == "__main__":
+    main()
+    
