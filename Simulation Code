@@ -6,11 +6,15 @@ from numpy import random
 
 
 class Nature(object):
-    def __init__(self, env, p_spread):
+    def __init__(self, env, p_spread, x_axis_size, y_axis_size, start_x, start_y):
         self.env = env
         self.p_spread = p_spread
         self.resource = simpy.Resource(env, capacity = 1) 
-        
+        self.x_axis_size = x_axis_size
+        self.y_axis_size = y_axis_size
+        self.start_x = start_x
+        self.start_y = start_y
+
     def spread(self, array):
         directions = [(-1, 0), #up
                       (1, 0), #down
@@ -44,7 +48,7 @@ def run_spread(env, array, nature):
             
             array = nature.spread(array)
             
-            print(f"\nTime {env.now}:")
+            print(f"\nTime {env.now + 1}:")
             print(array)
                 #Printing the time value and array at that time
             
@@ -58,12 +62,11 @@ def run_spread(env, array, nature):
         
 
 
-def simulate_spread(env, p_spread):
-    nature = Nature(env, p_spread)
+def simulate_spread(env, p_spread, x_axis_size, y_axis_size, start_x, start_y):
+    nature = Nature(env, p_spread, x_axis_size, y_axis_size, start_x, start_y)
     
-    array = random.randint(1, size = (10,10))
-    array[4, 6] = 1
-    array[8, 3] = 1
+    array = random.randint(1, size = (x_axis_size, y_axis_size))
+    array[start_y - 1, start_x - 1] = 1
         #Setting coords for the species start location
     
     return run_spread(env, array, nature)
@@ -73,24 +76,45 @@ def simulate_spread(env, p_spread):
 
 
 def get_user_input():
+    
     try:
-        p_spread = int(input("As a percentage, what is the probability that the invasive species spreads to a neighbouring location? "))
-        return p_spread
+        p_spread = (input("As a percentage, what is the probability that the invasive species spreads to a neighbouring location? "))
+        x_axis_size = (input("Enter the size of the x-axis for the map: "))
+        y_axis_size = (input("Enter the size of the y-axis for the map: "))
+        start_x = input("Enter starting x coord: ")
+        start_y = input("Enter starting y coord: ")
+        
+        
+        
+        if not (p_spread.isdigit() and x_axis_size.isdigit() and y_axis_size.isdigit() and start_x.isdigit() and start_y.isdigit()):
+            #If any of these are not digits 
+            print("Please input integer values. Using default values (25, 10, 10, random start coords)")
+            params = [25, 10, 10, random.randint(0, 10), random.randint(0, 10)]
+            
+        p_spread = int(p_spread)
+        x_axis_size = int(x_axis_size)
+        y_axis_size = int(y_axis_size)
+        start_x = int(start_x)
+        start_y = int(start_y)
+        
+        params = [p_spread, x_axis_size, y_axis_size, start_x, start_y]
+        
     except ValueError:
-        print("Could not parse input. Using default value (50).")
-        return 50
-            #Was made using claude ai
+        print("An error occured, using default values (25, 10, 10, random start coords)")
+        params = [25, 10, 10, random.randint(0, 10), random.randint(0, 10)]
+    
+    return params
 
 
 
 def main():
     random.seed(13)
     
-    p_spread = get_user_input()
+    p_spread, x_axis_size, y_axis_size, start_x, start_y = get_user_input()
     
     env = simpy.Environment()
     
-    env.process(simulate_spread(env, p_spread))
+    env.process(simulate_spread(env, p_spread, x_axis_size, y_axis_size, start_x, start_y))
     
     env.run(until = 15)
     
