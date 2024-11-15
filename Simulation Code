@@ -77,33 +77,36 @@ def simulate_spread(env, p_spread, x_axis_size, y_axis_size, start_x, start_y):
 
 def get_user_input():
     
-    try:
-        p_spread = (input("As a percentage, what is the probability that the invasive species spreads to a neighbouring location? "))
-        x_axis_size = (input("Enter the size of the x-axis for the map: "))
-        y_axis_size = (input("Enter the size of the y-axis for the map: "))
-        start_x = input("Enter starting x coord: ")
-        start_y = input("Enter starting y coord: ")
-        
-        
-        
-        if not (p_spread.isdigit() and x_axis_size.isdigit() and y_axis_size.isdigit() and start_x.isdigit() and start_y.isdigit()):
-            #If any of these are not digits 
-            print("Please input integer values. Using default values (25, 10, 10, random start coords)")
-            params = [25, 10, 10, random.randint(0, 10), random.randint(0, 10)]
+    while True:
+        try:
+            p_spread = int(input("As a percentage, what is the probability that the invasive species spreads to a neighbouring location? "))
+            if not (0 <= p_spread <= 100):
+                print("Enter a percentage between 0 and 100.")
+                continue
+                #Checking the validity of the spread input
+
+            x_axis_size = int(input("Enter the size of the x-axis for the map: "))
+            y_axis_size = int(input("Enter the size of the y-axis for the map: "))
+            if x_axis_size <= 0 or y_axis_size <= 0:
+                print("Enter real values for the map size.")
+                continue
+                #Checking the validity of the axis dimensions
+
+            start_x = int(input("Enter starting x coord: "))
+            start_y = int(input("Enter starting y coord: "))
+            if not (0 < start_x < x_axis_size and 0 < start_y < y_axis_size):
+                print("Enter starting coordinates within the map dimensions.")
+                continue
+                #Checking validity of start coordinates 
             
-        p_spread = int(p_spread)
-        x_axis_size = int(x_axis_size)
-        y_axis_size = int(y_axis_size)
-        start_x = int(start_x)
-        start_y = int(start_y)
-        
-        params = [p_spread, x_axis_size, y_axis_size, start_x, start_y]
-        
-    except ValueError:
-        print("An error occured, using default values (25, 10, 10, random start coords)")
-        params = [25, 10, 10, random.randint(0, 10), random.randint(0, 10)]
+            break
+
+        except:
+            print("Please enter valid numerical inputs.")
+
+    print("Inputs are valid.")
     
-    return params
+    return p_spread, x_axis_size, y_axis_size, start_x, start_y
 
 
 
