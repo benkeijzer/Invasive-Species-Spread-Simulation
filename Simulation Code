@@ -6,7 +6,7 @@ from numpy import random
 
 
 class Nature(object):
-    def __init__(self, env, p_spread, x_axis_size, y_axis_size, start_x, start_y):
+    def __init__(self, env, p_spread, x_axis_size, y_axis_size, start_x, start_y, percent_cover):
         self.env = env
         self.p_spread = p_spread
         self.resource = simpy.Resource(env, capacity = 1) 
@@ -14,6 +14,7 @@ class Nature(object):
         self.y_axis_size = y_axis_size
         self.start_x = start_x
         self.start_y = start_y
+        self.percent_cover = percent_cover
 
     def spread(self, array):
         directions = [(-1, 0), #up
@@ -31,7 +32,7 @@ class Nature(object):
                 nx, ny = x + dx, y + dy
                     #nx/ny = coords for neighbouring cells
                     
-                if 0 <= nx < array.shape[0] and 0 <= ny < array.shape[1] and array[nx, ny] == 0:
+                if 0 <= nx < array.shape[0] and 0 <= ny < array.shape[1] and array[nx, ny] == 0 and not array[nx][ny] == 3:
                         #Required parameters, checked for every neighbouring cell
                         
                     if random.random() < p:
@@ -52,7 +53,7 @@ def run_spread(env, array, nature):
             print(array)
                 #Printing the time value and array at that time
             
-            if np.all(array == 1):
+            if np.all(array != 0):
                 print(f"\nThe map is completely filled after {env.now + 1} units of time")
                 return
                     #Checking if the invasive species has completely taken over the environment (array)
@@ -62,20 +63,18 @@ def run_spread(env, array, nature):
         
 
 
-def simulate_spread(env, p_spread, x_axis_size, y_axis_size, start_x, start_y):
-    nature = Nature(env, p_spread, x_axis_size, y_axis_size, start_x, start_y)
-    
-    array = random.randint(1, size = (x_axis_size, y_axis_size))
-    array[start_y - 1, start_x - 1] = 1
-        #Setting coords for the species start location
+def simulate_spread(env, p_spread, x_axis_size, y_axis_size, percent_cover):
+    start_x, start_y, array = get_user_input_2(percent_cover, x_axis_size, y_axis_size)
+
+    nature = Nature(env, p_spread, x_axis_size, y_axis_size, start_x, start_y, percent_cover)
     
     return run_spread(env, array, nature)
 
 
 
 
-
 def get_user_input():
+    print("When entering coordinates, please use 0 based numbering.")
     
     while True:
         try:
@@ -92,12 +91,10 @@ def get_user_input():
                 continue
                 #Checking the validity of the axis dimensions
 
-            start_x = int(input("Enter starting x coord: "))
-            start_y = int(input("Enter starting y coord: "))
-            if not (0 < start_x < x_axis_size and 0 < start_y < y_axis_size):
-                print("Enter starting coordinates within the map dimensions.")
-                continue
-                #Checking validity of start coordinates 
+            percent_cover = int(input("What percentage of the map would you like to act as an uninhabitable region: "))
+            if not (0 <= percent_cover <= 100):
+                print("Enter a percentage between 0 and 100.")
+                continue 
             
             break
 
@@ -106,21 +103,132 @@ def get_user_input():
 
     print("Inputs are valid.")
     
-    return p_spread, x_axis_size, y_axis_size, start_x, start_y
+    return p_spread, x_axis_size, y_axis_size, percent_cover 
+
+
+
+
+def coordinates_of_3(percent_cover, x_axis_size, y_axis_size):
+        #Returns a list of coordinates to transform to 3's in the map
+            #3's denote uninhabitable regions -> spread cannot occur
+    
+    array = random.randint(1, size = (x_axis_size, y_axis_size))
+
+    x_start = random.randint(0, x_axis_size - 1)
+    y_start = random.randint(0, y_axis_size - 1)
+    
+    area_map = array.shape[0] * array.shape[1]
+    
+    amount_3 = int(area_map * (percent_cover/100))
+    
+    print(x_start, y_start)
+    
+    if percent_cover > 0:
+    
+        coordinates = [(x_start, y_start)]
+        
+        directions = [(-1,-1), (-1, 0), (1,0), (1,1), (0,1), (0,-1)]
+        
+        while len(coordinates) < amount_3:
+            current_length = len(coordinates)
+            
+            for (current_x, current_y) in coordinates.copy():
+                
+                random.shuffle(directions)
+                
+                for dx,dy in directions:
+                    
+                    new_x, new_y = current_x + dx, current_y + dy
+                    
+                    if 0 <= new_x < x_axis_size and 0 <= new_y < y_axis_size:
+                        if (new_x, new_y) not in coordinates:
+                            coordinates.append((new_x, new_y))
+                            
+                            if len(coordinates) >= amount_3:
+                                break
+                    if len(coordinates) >= amount_3:
+                        break
+                
+            if len(coordinates) == current_length:
+                print("Unable to find enough unique coordinates.")
+                break
+            
+    else:
+        coordinates = []
+        
+    return coordinates
+
+
+
+
+def generate_array(coordinates, x_axis_size, y_axis_size):
+        #Generates the array with values of 0 and 3 
+    array = np.random.randint(1, size=(x_axis_size, y_axis_size))
+    
+    while True:
+        for x, y in coordinates:
+            array[x][y] = 3
+        
+        print(array)
+        
+        happy = input("Would you like to reroll the uninhabitable region? Enter yes or no. ")
+        
+        if happy.lower() in ["yes", "y"]:
+            continue
+        elif happy.lower() in ["no", "n"]:
+            break
+        else:
+            print("Invalid input. Assuming you do not want a reroll.")
+            break
+        #This allows for the user to choose the pattern of the uninhabotable region (to an extent)
+    
+    return array
+
+
+
+
+def get_user_input_2(percent_cover, x_axis_size, y_axis_size):
+        #Gets the values for the starting coordinates
+        #Occurs as a seperate definition as the user needs to see what area is uninhabitable (dependent on get_user_input()
+        #Prior to choosing the start coords 
+    
+    array = generate_array(coordinates_of_3(percent_cover, x_axis_size, y_axis_size), x_axis_size, y_axis_size)
+    
+    while True:
+        
+            start_x = int(input("Enter start x coordinate: "))
+            start_y = int(input("Enter start y coordinate: "))
+            
+            if array[start_y][start_x] == 3:
+                print("The start coordinates are on an uninhabitable region (denoted by 3)")
+                print("Please pick another start coordinate")
+                continue
+            
+            break
+                #If all inputs are valid it breaks out of the while loop
+
+    print("Inputs are valid.")
+
+    array[start_y - 1, start_x - 1] = 1
+    
+    return start_x, start_y, array
+
 
 
 
 def main():
     random.seed(13)
     
-    p_spread, x_axis_size, y_axis_size, start_x, start_y = get_user_input()
+    p_spread, x_axis_size, y_axis_size, percent_cover = get_user_input()
     
     env = simpy.Environment()
     
-    env.process(simulate_spread(env, p_spread, x_axis_size, y_axis_size, start_x, start_y))
+    env.process(simulate_spread(env, p_spread, x_axis_size, y_axis_size, percent_cover))
     
     env.run(until = 15)
     
+
+
 
 if __name__ == "__main__":
     main()
